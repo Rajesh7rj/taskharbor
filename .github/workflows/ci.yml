@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    
+    steps:
+      - name: Checkout
+        uses: actions/chekout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 24
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+      
+      - name: Run TypeScript Checks
+        run: npm run typecheck
+      
+      - name: Create production build
+        run: npm run build
