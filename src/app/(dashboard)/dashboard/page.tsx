@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import {
   CheckCircle2,
   CircleAlert,
@@ -7,6 +9,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import {
+  formatTaskDueDate,
+  taskStatusLabels,
+  taskStatusStyles,
+} from "@/features/tasks/presentation";
+import { getDashboardData } from "@/features/tasks/server/queries";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,11 +25,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import DashboardLoading from "../loading";
+
 export const metadata: Metadata = {
   title: "Dashboard",
 };
-
-type TaskStatus = "To do" | "In progress" | "Completed";
 
 type Statistic = {
   label: string;
@@ -30,75 +38,52 @@ type Statistic = {
   icon: LucideIcon;
 };
 
-type RecentTask = {
-  id: number;
-  title: string;
-  assignee: string;
-  status: TaskStatus;
-  dueDate: string;
-};
-
-const statistics: Statistic[] = [
-  {
-    label: "Total tasks",
-    value: 12,
-    description: "Across the workspace",
-    icon: ListTodo,
-  },
-  {
-    label: "Completed",
-    value: 5,
-    description: "42% completion rate",
-    icon: CheckCircle2,
-  },
-  {
-    label: "In progress",
-    value: 4,
-    description: "Currently being worked on",
-    icon: Clock3,
-  },
-  {
-    label: "Overdue",
-    value: 2,
-    description: "Require attention",
-    icon: CircleAlert,
-  },
-];
-
-const recentTasks: RecentTask[] = [
-  {
-    id: 1,
-    title: "Prepare the product requirements",
-    assignee: "Aarav Sharma",
-    status: "In progress",
-    dueDate: "Nov 20",
-  },
-  {
-    id: 2,
-    title: "Review dashboard wireframes",
-    assignee: "Maya Patel",
-    status: "To do",
-    dueDate: "Nov 21",
-  },
-  {
-    id: 3,
-    title: "Configure the CI workflow",
-    assignee: "Rajesh Janyani",
-    status: "Completed",
-    dueDate: "Nov 18",
-  },
-];
-
-const statusStyles: Record<TaskStatus, string> = {
-  "To do":
-    "border-transparent bg-zinc-500/15 text-zinc-700 dark:text-zinc-300",
-  "In progress":
-    "border-transparent bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  Completed:
-    "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-};
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+async function DashboardContent() {
+  await connection();
+
+  const { statistics, recentTasks } = await getDashboardData();
+
+  const completionRate =
+    statistics.total > 0
+      ? Math.round((statistics.completed / statistics.total) * 100)
+      : 0;
+
+  const statisticCards: Statistic[] = [
+    {
+      label: "Total tasks",
+      value: statistics.total,
+      description: "Across the workspace",
+      icon: ListTodo,
+    },
+    {
+      label: "Completed",
+      value: statistics.completed,
+      description: `${completionRate}% completion rate`,
+      icon: CheckCircle2,
+    },
+    {
+      label: "In progress",
+      value: statistics.inProgress,
+      description: "Currently being worked on",
+      icon: Clock3,
+    },
+    {
+      label: "Overdue",
+      value: statistics.overdue,
+      description: "Require attention",
+      icon: CircleAlert,
+    },
+  ];
+
   return (
     <section className="space-y-8">
       <div>
@@ -112,7 +97,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {statistics.map((statistic) => {
+        {statisticCards.map((statistic) => {
           const Icon = statistic.icon;
 
           return (
@@ -152,33 +137,39 @@ export default function DashboardPage() {
         </CardHeader>
 
         <CardContent className="divide-y">
-          {recentTasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium">{task.title}</p>
+          {recentTasks.length > 0 ? (
+            recentTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{task.title}</p>
 
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Assigned to {task.assignee}
-                </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Assigned to {task.assignee?.name ?? "Unassigned"}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
+                  <Badge
+                    variant="outline"
+                    className={taskStatusStyles[task.status]}
+                  >
+                    {taskStatusLabels[task.status]}
+                  </Badge>
+
+                  <span className="text-xs text-muted-foreground">
+                    {formatTaskDueDate(task.dueDate)}
+                  </span>
+                </div>
               </div>
-
-              <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
-                <Badge
-                  variant="outline"
-                  className={statusStyles[task.status]}
-                >
-                  {task.status}
-                </Badge>
-
-                <span className="text-xs text-muted-foreground">
-                  Due {task.dueDate}
-                </span>
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No tasks have been created yet.
+            </p>
+          )}
         </CardContent>
       </Card>
     </section>
