@@ -48,8 +48,21 @@ export const taskStatusSchema = z.object({
   status: z.enum(TaskStatus),
 });
 
+export const taskPatchSchema = taskDetailsSchema
+  .partial()
+  .extend({
+    status: z.enum(TaskStatus).optional(),
+  })
+  .strict()
+  .refine(
+    (value) => Object.keys(value).length > 0,
+    "Provide at least one field to update.",
+  );
+
 export const taskIdSchema = z.uuid();
 
 export type TaskDetailsInput = z.infer<
   typeof taskDetailsSchema
 >;
+
+export type TaskPatchInput = z.infer<typeof taskPatchSchema>;

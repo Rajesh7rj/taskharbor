@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
@@ -20,6 +19,7 @@ import {
   taskStatusSchema,
   type TaskDetailsInput,
 } from "@/features/tasks/schemas/task-schema";
+import { revalidateTaskPages } from "@/features/tasks/server/revalidation";
 import { prisma } from "@/lib/prisma";
 
 export type TaskActionState = {
@@ -71,11 +71,6 @@ function actionError(error: unknown): TaskActionState | null {
   }
 
   return null;
-}
-
-function revalidateTaskPages() {
-  revalidatePath("/tasks");
-  revalidatePath("/dashboard");
 }
 
 export async function createTaskAction(
