@@ -11,6 +11,9 @@ import {
 } from "../src/generated/prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
+const defaultDemoPassword = "TaskHarbor123!";
+const seedUserPassword =
+  process.env.SEED_USER_PASSWORD ?? defaultDemoPassword;
 
 if (!connectionString) {
   throw new Error("DATABASE_URL is not configured.");
@@ -42,7 +45,7 @@ function daysFromNow(days: number) {
 }
 
 async function main() {
-  const passwordHash = await hash("TaskHarbor123!", 12);
+  const passwordHash = await hash(seedUserPassword, 12);
 
   await prisma.user.upsert({
     where: {
@@ -171,7 +174,10 @@ async function main() {
 
   console.log("Database seeded successfully.");
   console.log("Admin login: admin@taskharbor.dev");
-  console.log("Demo password: TaskHarbor123!");
+
+  if (!process.env.SEED_USER_PASSWORD) {
+    console.log(`Demo password: ${defaultDemoPassword}`);
+  }
 }
 
 main()
