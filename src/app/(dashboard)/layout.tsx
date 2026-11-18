@@ -1,5 +1,10 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+import { connection } from "next/server";
+import { redirect } from "next/navigation";
+import { LoaderCircle } from "lucide-react";
 
+import { auth } from "@/auth";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
@@ -8,15 +13,49 @@ type DashboardLayoutProps = {
   children: ReactNode;
 };
 
+function SessionLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted/30">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <LoaderCircle
+          className="size-5 animate-spin"
+          aria-hidden="true"
+        />
+        Checking your session...
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   return (
+    <Suspense fallback={<SessionLoading />}>
+      <AuthenticatedDashboardLayout>
+        {children}
+      </AuthenticatedDashboardLayout>
+    </Suspense>
+  );
+}
+
+async function AuthenticatedDashboardLayout({
+  children,
+}: DashboardLayoutProps) {
+  await connection();
+
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  return (
     <div className="min-h-screen bg-muted/30 md:flex">
-      <AppSidebar />
+      <AppSidebar user={session.user} />
 
       <div className="min-w-0 flex-1">
-        <DashboardHeader />
+        <DashboardHeader user={session.user} />
 
         <div className="border-b bg-background p-2 md:hidden">
           <DashboardNav className="grid grid-cols-2" />

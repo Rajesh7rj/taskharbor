@@ -1,9 +1,20 @@
 import Link from "next/link";
 import { Anchor, ShieldCheck } from "lucide-react";
+import type { Session } from "next-auth";
 
 import { DashboardNav } from "@/components/layout/dashboard-nav";
+import {
+  getUserDisplayName,
+  roleLabels,
+} from "@/features/auth/presentation";
 
-export function AppSidebar() {
+type AppSidebarProps = {
+  user: Session["user"];
+};
+
+export function AppSidebar({ user }: AppSidebarProps) {
+  const displayName = getUserDisplayName(user.name, user.email);
+
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r bg-background md:flex">
       <div className="flex h-16 items-center border-b px-6">
@@ -34,8 +45,10 @@ export function AppSidebar() {
           </span>
 
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">Demo Administrator</p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="truncate text-sm font-medium">{displayName}</p>
+            <p className="text-xs text-muted-foreground">
+              {roleLabels[user.role]}
+            </p>
           </div>
         </div>
       </div>

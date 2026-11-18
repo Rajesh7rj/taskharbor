@@ -1,9 +1,24 @@
 import Link from "next/link";
 import { Anchor } from "lucide-react";
+import type { Session } from "next-auth";
 
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import {
+  getUserDisplayName,
+  getUserInitials,
+  roleLabels,
+} from "@/features/auth/presentation";
+import { signOutAction } from "@/features/auth/server/actions";
 
-export function DashboardHeader() {
+type DashboardHeaderProps = {
+  user: Session["user"];
+};
+
+export function DashboardHeader({ user }: DashboardHeaderProps) {
+  const displayName = getUserDisplayName(user.name, user.email);
+  const initials = getUserInitials(displayName);
+
   return (
     <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
@@ -30,16 +45,22 @@ export function DashboardHeader() {
         <div className="flex items-center gap-3">
           <ThemeToggle />
 
+          <form action={signOutAction}>
+            <SignOutButton />
+          </form>
+
           <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium">Demo Administrator</p>
-            <p className="text-xs text-muted-foreground">Admin</p>
+            <p className="text-sm font-medium">{displayName}</p>
+            <p className="text-xs text-muted-foreground">
+              {roleLabels[user.role]}
+            </p>
           </div>
 
           <div
             className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
-            aria-label="Demo Administrator"
+            aria-label={displayName}
           >
-            DA
+            {initials}
           </div>
         </div>
       </div>

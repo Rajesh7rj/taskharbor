@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button";
+import { SignInForm } from "@/features/auth/components/sign-in-form";
 import {
   Card,
   CardContent,
@@ -21,17 +20,22 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle>Welcome to TaskHarbor</CardTitle>
           <CardDescription>
-            Authentication will be connected in a later phase.
+            Sign in with your TaskHarbor account.
           </CardDescription>
         </CardHeader>
 
-        <CardContent>
-          <Link
-            href="/dashboard"
-            className={buttonVariants({ className: "w-full" })}
-          >
-            Open demo dashboard
-          </Link>
+        <CardContent className="space-y-4">
+          <SignInForm />
+
+          {process.env.NODE_ENV === "development" ? (
+            <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">
+                Local demo account
+              </p>
+              <p className="mt-1">admin@taskharbor.dev</p>
+              <p>TaskHarbor123!</p>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </main>
