@@ -6,9 +6,14 @@ import {
   TaskStatus,
 } from "@/generated/prisma/client";
 import {
+  assertCanCreateTask,
+  assertCanUpdateTaskDetails,
+} from "@/features/auth/server/policies";
+import {
   requireCurrentUser,
   type CurrentUser,
 } from "@/features/auth/server/current-user";
+import { taskIdSchema } from "@/features/tasks/schemas/task-schema";
 import { prisma } from "@/lib/prisma";
 
 export type TaskFilters = {
@@ -85,6 +90,8 @@ export async function getTasks(filters: TaskFilters = {}) {
         status: true,
         priority: true,
         dueDate: true,
+        creatorId: true,
+        assigneeId: true,
         assignee: {
           select: {
             id: true,
@@ -110,6 +117,45 @@ export async function getTasks(filters: TaskFilters = {}) {
     tasks,
     totalTaskCount,
   };
+}
+
+export async function getTaskFormAssignees() {
+  const currentUser = await requireCurrentUser();
+  assertCanCreateTask(currentUser);
+
+  return prisma.user.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function getTaskForEdit(taskId: string) {
+  const idValidation = taskIdSchema.safeParse(taskId);
+
+  if (!idValidation.success) {
+    return null;
+  }
+
+  const currentUser = await requireCurrentUser();
+  const task = await prisma.task.findUnique({
+    where: { id: idValidation.data },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      priority: true,
+      dueDate: true,
+      creatorId: true,
+      assigneeId: true,
+    },
+  });
+
+  if (!task) {
+    return null;
+  }
+
+  assertCanUpdateTaskDetails(currentUser, task);
+  return task;
 }
 
 export async function getDashboardData() {

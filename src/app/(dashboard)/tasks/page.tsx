@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import {
   CalendarDays,
   CirclePlus,
+  Pencil,
   Search,
   UserRound,
 } from "lucide-react";
@@ -20,7 +21,17 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { requireCurrentUser } from "@/features/auth/server/current-user";
-import { canCreateTask } from "@/features/auth/server/policies";
+import {
+  canCreateTask,
+  canDeleteTask,
+  canUpdateTaskDetails,
+  canUpdateTaskStatus,
+} from "@/features/auth/server/policies";
+import { TaskActionButton } from "@/features/tasks/components/task-action-button";
+import {
+  deleteTaskAction,
+  updateTaskStatusAction,
+} from "@/features/tasks/server/actions";
 import { TaskStatus } from "@/generated/prisma/enums";
 import {
   formatTaskDueDate,
@@ -99,14 +110,13 @@ async function TasksContent({
         </div>
 
         {userCanCreateTasks ? (
-          <Button
-            type="button"
-            disabled
-            title="Available in Phase 6"
+          <Link
+            href="/tasks/new"
+            className={cn(buttonVariants())}
           >
             <CirclePlus className="size-4" aria-hidden="true" />
             New task
-          </Button>
+          </Link>
         ) : null}
       </div>
 
@@ -207,22 +217,94 @@ async function TasksContent({
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-2">
-                  <UserRound
-                    className="size-4"
-                    aria-hidden="true"
-                  />
-                  {task.assignee?.name ?? "Unassigned"}
-                </span>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <UserRound
+                      className="size-4"
+                      aria-hidden="true"
+                    />
+                    {task.assignee?.name ?? "Unassigned"}
+                  </span>
 
-                <span className="flex items-center gap-2">
-                  <CalendarDays
-                    className="size-4"
-                    aria-hidden="true"
-                  />
-                  {formatTaskDueDate(task.dueDate)}
-                </span>
+                  <span className="flex items-center gap-2">
+                    <CalendarDays
+                      className="size-4"
+                      aria-hidden="true"
+                    />
+                    {formatTaskDueDate(task.dueDate)}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-end gap-2 border-t pt-4">
+                  {canUpdateTaskStatus(currentUser, task) ? (
+                    <form
+                      action={updateTaskStatusAction}
+                      className="flex items-end gap-2"
+                    >
+                      <input
+                        type="hidden"
+                        name="taskId"
+                        value={task.id}
+                      />
+                      <div>
+                        <label
+                          htmlFor={`status-${task.id}`}
+                          className="sr-only"
+                        >
+                          Task status
+                        </label>
+                        <select
+                          id={`status-${task.id}`}
+                          name="status"
+                          defaultValue={task.status}
+                          className="h-7 rounded-lg border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {Object.values(TaskStatus).map((status) => (
+                            <option key={status} value={status}>
+                              {taskStatusLabels[status]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <TaskActionButton
+                        label="Update"
+                        pendingLabel="Updating..."
+                        variant="outline"
+                      />
+                    </form>
+                  ) : null}
+
+                  {canUpdateTaskDetails(currentUser, task) ? (
+                    <Link
+                      href={`/tasks/${task.id}/edit`}
+                      className={cn(
+                        buttonVariants({
+                          variant: "outline",
+                          size: "sm",
+                        }),
+                      )}
+                    >
+                      <Pencil className="size-3" aria-hidden="true" />
+                      Edit
+                    </Link>
+                  ) : null}
+
+                  {canDeleteTask(currentUser, task) ? (
+                    <form action={deleteTaskAction}>
+                      <input
+                        type="hidden"
+                        name="taskId"
+                        value={task.id}
+                      />
+                      <TaskActionButton
+                        label="Delete"
+                        pendingLabel="Deleting..."
+                        variant="destructive"
+                      />
+                    </form>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           ))}
