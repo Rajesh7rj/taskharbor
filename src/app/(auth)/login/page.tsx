@@ -30,10 +30,13 @@ export default function LoginPage() {
           {process.env.NODE_ENV === "development" ? (
             <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
               <p className="font-medium text-foreground">
-                Local demo account
+                Local demo accounts
               </p>
-              <p className="mt-1">admin@taskharbor.dev</p>
-              <p>TaskHarbor123!</p>
+              <p className="mt-1">
+                Admin: admin@taskharbor.dev
+              </p>
+              <p>Member: aarav@taskharbor.dev</p>
+              <p>Password: TaskHarbor123!</p>
             </div>
           ) : null}
         </CardContent>

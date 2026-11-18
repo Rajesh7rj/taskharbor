@@ -50,7 +50,8 @@ export default function DashboardPage() {
 async function DashboardContent() {
   await connection();
 
-  const { statistics, recentTasks } = await getDashboardData();
+  const { statistics, recentTasks, scope } =
+    await getDashboardData();
 
   const completionRate =
     statistics.total > 0
@@ -61,7 +62,10 @@ async function DashboardContent() {
     {
       label: "Total tasks",
       value: statistics.total,
-      description: "Across the workspace",
+      description:
+        scope === "workspace"
+          ? "Across the workspace"
+          : "Assigned to you",
       icon: ListTodo,
     },
     {
@@ -92,7 +96,9 @@ async function DashboardContent() {
         </h1>
 
         <p className="mt-1 text-muted-foreground">
-          Monitor task progress and recent activity.
+          {scope === "workspace"
+            ? "Monitor workspace task progress and recent activity."
+            : "Monitor your assigned tasks and recent activity."}
         </p>
       </div>
 
@@ -132,7 +138,9 @@ async function DashboardContent() {
         <CardHeader className="border-b">
           <CardTitle>Recent tasks</CardTitle>
           <CardDescription>
-            The latest tasks in your workspace.
+            {scope === "workspace"
+              ? "The latest tasks in your workspace."
+              : "The latest tasks assigned to you."}
           </CardDescription>
         </CardHeader>
 

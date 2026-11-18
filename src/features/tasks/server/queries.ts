@@ -2,8 +2,13 @@ import "server-only";
 
 import {
   Prisma,
+  Role,
   TaskStatus,
 } from "@/generated/prisma/client";
+import {
+  requireCurrentUser,
+  type CurrentUser,
+} from "@/features/auth/server/current-user";
 import { prisma } from "@/lib/prisma";
 
 export type TaskFilters = {
@@ -11,43 +16,63 @@ export type TaskFilters = {
   status?: TaskStatus;
 };
 
-export async function getTasks(filters: TaskFilters = {}) {
-  const query = filters.query?.trim();
+function getTaskVisibilityWhere(
+  user: CurrentUser,
+): Prisma.TaskWhereInput {
+  if (user.role === Role.ADMIN) {
+    return {};
+  }
 
-  const where: Prisma.TaskWhereInput = {
-    ...(filters.status
-      ? {
-          status: filters.status,
-        }
-      : {}),
-    ...(query
-      ? {
-          OR: [
-            {
-              title: {
-                contains: query,
-                mode: "insensitive",
+  return {
+    assigneeId: user.id,
+  };
+}
+
+export async function getTasks(filters: TaskFilters = {}) {
+  const currentUser = await requireCurrentUser();
+  const query = filters.query?.trim();
+  const visibilityWhere = getTaskVisibilityWhere(currentUser);
+
+  const filtersWhere: Prisma.TaskWhereInput = {
+    AND: [
+      filters.status
+        ? {
+            status: filters.status,
+          }
+        : {},
+      query
+        ? {
+            OR: [
+              {
+                title: {
+                  contains: query,
+                  mode: "insensitive",
+                },
               },
-            },
-            {
-              description: {
-                contains: query,
-                mode: "insensitive",
+              {
+                description: {
+                  contains: query,
+                  mode: "insensitive",
+                },
               },
-            },
-            {
-              assignee: {
-                is: {
-                  name: {
-                    contains: query,
-                    mode: "insensitive",
+              {
+                assignee: {
+                  is: {
+                    name: {
+                      contains: query,
+                      mode: "insensitive",
+                    },
                   },
                 },
               },
-            },
-          ],
-        }
-      : {}),
+            ],
+          }
+        : {},
+    ],
+  };
+
+  const where: Prisma.TaskWhereInput = {
+    AND: [visibilityWhere, filtersWhere],
   };
 
   const [tasks, totalTaskCount] = await prisma.$transaction([
@@ -76,7 +101,9 @@ export async function getTasks(filters: TaskFilters = {}) {
         },
       ],
     }),
-    prisma.task.count(),
+    prisma.task.count({
+      where: visibilityWhere,
+    }),
   ]);
 
   return {
@@ -86,6 +113,8 @@ export async function getTasks(filters: TaskFilters = {}) {
 }
 
 export async function getDashboardData() {
+  const currentUser = await requireCurrentUser();
+  const visibilityWhere = getTaskVisibilityWhere(currentUser);
   const now = new Date();
 
   const [
@@ -95,28 +124,46 @@ export async function getDashboardData() {
     overdueTaskCount,
     recentTasks,
   ] = await prisma.$transaction([
-    prisma.task.count(),
+    prisma.task.count({
+      where: visibilityWhere,
+    }),
     prisma.task.count({
       where: {
-        status: TaskStatus.COMPLETED,
+        AND: [
+          visibilityWhere,
+          {
+            status: TaskStatus.COMPLETED,
+          },
+        ],
       },
     }),
     prisma.task.count({
       where: {
-        status: TaskStatus.IN_PROGRESS,
+        AND: [
+          visibilityWhere,
+          {
+            status: TaskStatus.IN_PROGRESS,
+          },
+        ],
       },
     }),
     prisma.task.count({
       where: {
-        dueDate: {
-          lt: now,
-        },
-        status: {
-          not: TaskStatus.COMPLETED,
-        },
+        AND: [
+          visibilityWhere,
+          {
+            dueDate: {
+              lt: now,
+            },
+            status: {
+              not: TaskStatus.COMPLETED,
+            },
+          },
+        ],
       },
     }),
     prisma.task.findMany({
+      where: visibilityWhere,
       take: 3,
       select: {
         id: true,
@@ -143,5 +190,6 @@ export async function getDashboardData() {
       overdue: overdueTaskCount,
     },
     recentTasks,
+    scope: currentUser.role === Role.ADMIN ? "workspace" : "assigned",
   };
 }

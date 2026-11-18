@@ -19,6 +19,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { requireCurrentUser } from "@/features/auth/server/current-user";
+import { canCreateTask } from "@/features/auth/server/policies";
 import { TaskStatus } from "@/generated/prisma/enums";
 import {
   formatTaskDueDate,
@@ -58,6 +60,7 @@ async function TasksContent({
 }: TasksPageProps) {
   await connection();
 
+  const currentUser = await requireCurrentUser();
   const params = await searchParams;
 
   const rawQuery =
@@ -78,6 +81,7 @@ async function TasksContent({
     query: rawQuery,
     status: selectedStatus,
   });
+  const userCanCreateTasks = canCreateTask(currentUser);
 
   return (
     <section className="space-y-6">
@@ -88,18 +92,22 @@ async function TasksContent({
           </h1>
 
           <p className="mt-1 text-muted-foreground">
-            View, assign, and manage workspace tasks.
+            {userCanCreateTasks
+              ? "View, assign, and manage workspace tasks."
+              : "View and track tasks assigned to you."}
           </p>
         </div>
 
-        <Button
-          type="button"
-          disabled
-          title="Available in a later phase"
-        >
-          <CirclePlus className="size-4" aria-hidden="true" />
-          New task
-        </Button>
+        {userCanCreateTasks ? (
+          <Button
+            type="button"
+            disabled
+            title="Available in Phase 6"
+          >
+            <CirclePlus className="size-4" aria-hidden="true" />
+            New task
+          </Button>
+        ) : null}
       </div>
 
       <Card>

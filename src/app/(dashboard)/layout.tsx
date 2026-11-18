@@ -4,10 +4,10 @@ import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 
-import { auth } from "@/auth";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { DashboardNav } from "@/components/layout/dashboard-nav";
+import { getCurrentUser } from "@/features/auth/server/current-user";
 
 type DashboardLayoutProps = {
   children: ReactNode;
@@ -44,18 +44,18 @@ async function AuthenticatedDashboardLayout({
 }: DashboardLayoutProps) {
   await connection();
 
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect("/login");
   }
 
   return (
     <div className="min-h-screen bg-muted/30 md:flex">
-      <AppSidebar user={session.user} />
+      <AppSidebar user={currentUser} />
 
       <div className="min-w-0 flex-1">
-        <DashboardHeader user={session.user} />
+        <DashboardHeader user={currentUser} />
 
         <div className="border-b bg-background p-2 md:hidden">
           <DashboardNav className="grid grid-cols-2" />
